@@ -1,4 +1,4 @@
-***A PowerShell script that provides various security checks for Active Directory Certificate Services (AD CS) in a Windows environment***
+***A script that provides various security checks for Active Directory Certificate Services (AD CS) in a Windows environment***
 
 # Installation
 
