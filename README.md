@@ -4,7 +4,7 @@
 
 Cloning this GitHub repository to your local machine using the following command:
 
-      git clone https://github.com/yourusername/ADCS-Scan.git
+      git clone https://github.com/0x5FE/ADCS-Scan.git
 
 
 Change your working directory to the repository's root folder:
