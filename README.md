@@ -2,7 +2,7 @@
 
 # Installation
 
-Cloning this GitHub repository to your local machine using the following command:
+Cloning this repository to your local machine using the following command:
 
       git clone https://github.com/0x5FE/ADCS-Scan.git
 
