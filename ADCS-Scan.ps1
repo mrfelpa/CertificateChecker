@@ -1,27 +1,34 @@
 
-# Function to check if a specific certificate template exists
 function Test-CertificateTemplate {
+    [CmdletBinding()]
     param (
-        [string]$templateName
+        [Parameter(Mandatory = $true)]
+        [string]$TemplateName
     )
-    
-    $template = Get-CATemplate | Where-Object { $_.Name -eq $templateName }
-    
-    if ($template) {
-        Write-Host "Certificate template '$templateName' exists."
-        return $true
+
+    try {
+        $template = Get-CATemplate | Where-Object { $_.Name -eq $TemplateName }
+        
+        if ($template) {
+            Write-Output "Certificate template '$TemplateName' exists."
+            return $true
+        }
+        else {
+            Write-Output "Certificate template '$TemplateName' does not exist."
+            return $false
+        }
     }
-    else {
-        Write-Host "Certificate template '$templateName' does not exist."
+    catch {
+        Write-Error "Error checking certificate template: $_"
         return $false
     }
 }
 
-# Check if the AD CS role is installed
+
 $adcsInstalled = Get-WindowsFeature -Name ADCS-Cert-Authority -ErrorAction SilentlyContinue
 
 if ($adcsInstalled -eq $null) {
-    Write-Host "AD CS role is not installed on this server."
+    Write-Output "AD CS role is not installed on this server."
     exit
 }
 
@@ -29,15 +36,15 @@ if ($adcsInstalled -eq $null) {
 $rootCACerts = Get-ChildItem -Path Cert:\LocalMachine\Root | Where-Object { $_.Issuer -eq $_.Subject -and $_.NotAfter -gt (Get-Date) }
 
 if ($rootCACerts.Count -eq 0) {
-    Write-Host "No unexpired root CA certificates found in the Local Machine\Root store."
+    Write-Output "No unexpired root CA certificates found in the Local Machine\Root store."
 }
 else {
-    Write-Host "Unexpired root CA certificates found in the Local Machine\Root store:"
+    Write-Output "Unexpired root CA certificates found in the Local Machine\Root store:"
     $rootCACerts | ForEach-Object {
-        Write-Host "Subject: $($_.Subject)"
-        Write-Host "  Thumbprint: $($_.Thumbprint)"
-        Write-Host "  Expiry Date: $($_.NotAfter)"
-        Write-Host "---------------------------"
+        Write-Output "Subject: $($_.Subject)"
+        Write-Output "  Thumbprint: $($_.Thumbprint)"
+        Write-Output "  Expiry Date: $($_.NotAfter)"
+        Write-Output "---------------------------"
     }
 }
 
@@ -45,15 +52,15 @@ else {
 $intermediateCACerts = Get-ChildItem -Path Cert:\LocalMachine\CA | Where-Object { $_.Issuer -ne $_.Subject -and $_.NotAfter -gt (Get-Date) }
 
 if ($intermediateCACerts.Count -eq 0) {
-    Write-Host "No unexpired intermediate CA certificates found in the Local Machine\CA store."
+    Write-Output "No unexpired intermediate CA certificates found in the Local Machine\CA store."
 }
 else {
-    Write-Host "Unexpired intermediate CA certificates found in the Local Machine\CA store:"
+    Write-Output "Unexpired intermediate CA certificates found in the Local Machine\CA store:"
     $intermediateCACerts | ForEach-Object {
-        Write-Host "Subject: $($_.Subject)"
-        Write-Host "  Thumbprint: $($_.Thumbprint)"
-        Write-Host "  Expiry Date: $($_.NotAfter)"
-        Write-Host "---------------------------"
+        Write-Output "Subject: $($_.Subject)"
+        Write-Output "  Thumbprint: $($_.Thumbprint)"
+        Write-Output "  Expiry Date: $($_.NotAfter)"
+        Write-Output "---------------------------"
     }
 }
 
@@ -61,65 +68,74 @@ else {
 $adcsConfigPath = "C:\Windows\System32\certsrv"
 $adcsLogsPath = "C:\Windows\System32\CertLog"
 
-$adcsConfigACL = Get-Acl -Path $adcsConfigPath
-$adcsLogsACL = Get-Acl -Path $adcsLogsPath
+try {
+    $adcsConfigACL = Get-Acl -Path $adcsConfigPath
+    $adcsLogsACL = Get-Acl -Path $adcsLogsPath
+    
+    # Check permissions on the configuration folder
+    Write-Output "Permissions on the AD CS Configuration Folder ($adcsConfigPath):"
+    $adcsConfigACL.Access | ForEach-Object {
+        Write-Output "User/Group: $($_.IdentityReference)"
+        Write-Output "  Permissions: $($_.FileSystemRights)"
+        Write-Output "---------------------------"
+    }
 
-# Check permissions on the configuration folder
-Write-Host "Permissions on the AD CS Configuration Folder ($adcsConfigPath):"
-$adcsConfigACL.Access | ForEach-Object {
-    Write-Host "User/Group: $($_.IdentityReference)"
-    Write-Host "  Permissions: $($_.FileSystemRights)"
-    Write-Host "---------------------------"
+    # Check permissions on the logs folder
+    Write-Output "Permissions on the AD CS Logs Folder ($adcsLogsPath):"
+    $adcsLogsACL.Access | ForEach-Object {
+        Write-Output "User/Group: $($_.IdentityReference)"
+        Write-Output "  Permissions: $($_.FileSystemRights)"
+        Write-Output "---------------------------"
+    }
 }
-
-# Check permissions on the logs folder
-Write-Host "Permissions on the AD CS Logs Folder ($adcsLogsPath):"
-$adcsLogsACL.Access | ForEach-Object {
-    Write-Host "User/Group: $($_.IdentityReference)"
-    Write-Host "  Permissions: $($_.FileSystemRights)"
-    Write-Host "---------------------------"
+catch {
+    Write-Error "Error checking permissions: $_"
 }
 
 # Check for specific certificate templates
 $certificateTemplatesToCheck = @("WebServer", "User", "Computer")
 
 foreach ($templateName in $certificateTemplatesToCheck) {
-    Test-CertificateTemplate -templateName $templateName
+    Test-CertificateTemplate -TemplateName $templateName
 }
 
-# Check CRL (Certificate Revocation List) distribution points
+# Check CRL (Certificate Revocation List) 
 $crlDistributionPoints = Get-CACrlDistributionPoint
 
 if ($crlDistributionPoints.Count -eq 0) {
-    Write-Host "No CRL distribution points configured."
+    Write-Output "No CRL distribution points configured."
 }
 else {
-    Write-Host "CRL distribution points configured:"
+    Write-Output "CRL distribution points configured:"
     $crlDistributionPoints | ForEach-Object {
-        Write-Host "CRL Distribution Point: $($_.uri)"
+        Write-Output "CRL Distribution Point: $($_.uri)"
     }
 }
 
-# Additional security checks
 # Check for expired certificates and alert if found
 $expiredCertificates = Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object { $_.NotAfter -lt (Get-Date) }
 
 if ($expiredCertificates.Count -gt 0) {
-    Write-Host "Expired certificates found in the Local Machine\My store:"
+    Write-Output "Expired certificates found in the Local Machine\My store:"
     $expiredCertificates | ForEach-Object {
-        Write-Host "Subject: $($_.Subject)"
-        Write-Host "  Thumbprint: $($_.Thumbprint)"
-        Write-Host "  Expiry Date: $($_.NotAfter)"
-        Write-Host "---------------------------"
+        Write-Output "Subject: $($_.Subject)"
+        Write-Output "  Thumbprint: $($_.Thumbprint)"
+        Write-Output "  Expiry Date: $($_.NotAfter)"
+        Write-Output "---------------------------"
     }
 }
 
 # Check if auditing is enabled for AD CS events
-$auditPolicy = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration" | Select-Object -ExpandProperty AuditFilter
-
-if ($auditPolicy -eq "0x0") {
-    Write-Host "Auditing for AD CS events is not enabled."
+try {
+    $auditPolicy = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration" | Select-Object -ExpandProperty AuditFilter
+    
+    if ($auditPolicy -eq "0x0") {
+        Write-Output "Auditing for AD CS events is not enabled."
+    }
+    else {
+        Write-Output "Auditing for AD CS events is enabled. AuditFilter: $auditPolicy"
+    }
 }
-else {
-    Write-Host "Auditing for AD CS events is enabled. AuditFilter: $auditPolicy"
+catch {
+    Write-Error "Error checking auditing settings: $_"
 }
