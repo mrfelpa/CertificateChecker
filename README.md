@@ -12,6 +12,11 @@
 - Identifying any expired certificates in the ***Local Machine\My store***.
 
 - Checking if auditing is enabled for ***AD CS events***.
+  
+
+![tela](https://github.com/user-attachments/assets/5efae727-110b-4873-ae06-6c3b22544e90)
+
+![Tela_2](https://github.com/user-attachments/assets/19318283-9b4b-4ab6-8a48-f3250b9379e9)
 
 
 # Installation
